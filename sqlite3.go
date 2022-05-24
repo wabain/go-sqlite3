@@ -344,8 +344,9 @@ const (
 
 // SQLiteDriver implements driver.Driver.
 type SQLiteDriver struct {
-	Extensions  []string
-	ConnectHook func(*SQLiteConn) error
+	Extensions     []string
+	ConnectHook    func(*SQLiteConn) error
+	RawConnectHook func(unsafe.Pointer) error
 }
 
 // SQLiteConn implements driver.Conn.
@@ -1761,6 +1762,12 @@ func (d *SQLiteDriver) Open(dsn string) (driver.Conn, error) {
 		}
 	}
 
+	if d.RawConnectHook != nil {
+		if err := d.RawConnectHook(unsafe.Pointer(conn.db)); err != nil {
+			conn.Close()
+			return nil, err
+		}
+	}
 	if d.ConnectHook != nil {
 		if err := d.ConnectHook(conn); err != nil {
 			conn.Close()
